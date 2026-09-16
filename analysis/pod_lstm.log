@@ -1,0 +1,32 @@
+POD: 33406 faces, r=10 modes capture 99.998% of fluctuation energy
+compressor floor: field L2 0.253%  wall RRT 0.000%
+  epoch     0  one-step MSE 1.37e+00
+  epoch   500  one-step MSE 5.13e-04
+  epoch  1000  one-step MSE 4.36e-04
+  epoch  1500  one-step MSE 4.08e-04
+  epoch  2000  one-step MSE 3.32e-04
+  epoch  2500  one-step MSE 3.05e-04
+  epoch  2999  one-step MSE 3.20e-04
+trained in 15 s
+
+rollout: 6 cycles. drift estimate  lag-growth rho = -0.00%   Hilbert rho = +0.02%   final-cycle amplitude ratio 0.998
+  lag per cycle (samples): [-0.  0.  0.  0.  0.  0.]
+
+cyc     L2    lag |      wall T/R |       sac T/R |   OSI>0.1 T/R | rho=roll/floor
+  1   0.3%  -0.00 |   0.03/ 0.03% |   0.04/ 0.04% |   0.04/ 0.03% |            2.6
+  2   0.4%   0.00 |   0.02/ 0.02% |   0.06/ 0.06% |   0.14/ 0.07% |            2.0
+  3   0.5%   0.00 |   0.27/ 0.27% |   0.42/ 0.42% |   0.29/ 0.32% |           26.5
+  4   0.6%   0.00 |   0.34/ 0.34% |   0.53/ 0.54% |   0.34/ 0.41% |           34.1
+  5   0.6%   0.00 |   0.36/ 0.36% |   0.56/ 0.57% |   0.35/ 0.44% |           36.3
+  6   0.6%   0.00 |   0.37/ 0.37% |   0.57/ 0.58% |   0.36/ 0.44% |           37.0
+
+law check on the last cycle (median per-face excess RRT error beyond TAWSS):
+       1/R-1 bin  faces  predicted   measured
+  [ 0.00, 0.02)  31233      0.00%      0.00%
+  [ 0.02, 0.10)   1797      0.02%      0.01%
+  [ 0.10, 0.30)    281      0.03%     -0.05%
+  [ 0.30, 1.00)     86      0.07%      0.10%
+  [ 1.00,10.00)      9      0.14%      0.53%
+
+rho diagnostic: >1 means rollout drift, not the compressor, dominates the RRT error
+wrote data/pod_lstm_results.npz, data/pod_lstm_summary.json, analysis/pod_lstm.png
