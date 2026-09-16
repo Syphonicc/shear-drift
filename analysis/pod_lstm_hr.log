@@ -1,0 +1,34 @@
+POD: 33406 faces, r=10 modes capture 99.998% of fluctuation energy
+compressor floor: field L2 0.253%  wall RRT 0.000%
+training mode 'heartrate': beat lengths [34, 36, 38, 42, 44, 46] (test beat = 40), 1968 samples
+  epoch     0  one-step MSE 1.32e+00
+  epoch   500  one-step MSE 8.47e-04
+  epoch  1000  one-step MSE 6.51e-04
+  epoch  1500  one-step MSE 4.85e-04
+  epoch  2000  one-step MSE 4.36e-04
+  epoch  2500  one-step MSE 4.35e-04
+  epoch  2999  one-step MSE 4.37e-04
+trained in 97 s
+one-step RMSE on the unseen beat (teacher-forced): 7.31e-02  <- what a paper would usually report
+
+rollout: 6 cycles. drift estimate  lag-growth rho = +1.98%   Hilbert rho = +0.83%   final-cycle amplitude ratio 0.992
+  lag per cycle (samples): [-0.   -1.03 -2.62 -2.06 -3.83 -3.98]
+
+cyc     L2    lag |      wall T/R |       sac T/R |   OSI>0.1 T/R | rho=roll/floor
+  1   7.8%  -0.00 |   6.23/ 6.78% |   8.84/10.24% |   3.00/ 6.94% |          678.3
+  2  31.2%  -1.03 |   7.72/ 8.59% |  11.59/13.93% |   3.78/ 9.40% |          858.9
+  3  63.1%  -2.62 |   2.19/ 2.30% |   1.99/ 2.30% |   1.22/ 1.17% |          230.4
+  4  55.6%  -2.06 |   9.16/10.40% |  13.36/16.64% |   4.33/11.00% |         1039.5
+  5  77.3%  -3.83 |   1.90/ 1.88% |   2.62/ 2.62% |   0.85/ 1.91% |          188.4
+  6  78.9%  -3.98 |   1.50/ 1.56% |   3.54/ 3.77% |   1.50/ 4.11% |          156.0
+
+law check on the last cycle (median per-face excess RRT error beyond TAWSS):
+       1/R-1 bin  faces  predicted   measured
+  [ 0.00, 0.02)  31233      0.20%      0.02%
+  [ 0.02, 0.10)   1797      1.89%      0.29%
+  [ 0.10, 0.30)    281      4.33%      0.58%
+  [ 0.30, 1.00)     86      9.29%      2.46%
+  [ 1.00,10.00)      9     17.99%      7.00%
+
+rho diagnostic: >1 means rollout drift, not the compressor, dominates the RRT error
+wrote data/pod_lstm_results_hr.npz, data/pod_lstm_summary_hr.json, analysis/pod_lstm_hr.png
