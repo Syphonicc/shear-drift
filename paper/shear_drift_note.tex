@@ -1,0 +1,393 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+
+\newcommand{\TAWSS}{\mathrm{TAWSS}}
+\newcommand{\OSI}{\mathrm{OSI}}
+\newcommand{\RRT}{\mathrm{RRT}}
+\newcommand{\eps}{\varepsilon}
+
+\title{Cancellation, not accuracy: why residence-time biomarkers fail in
+time-resolved hemodynamic surrogates, and how the error triple
+$(\TAWSS,\OSI,\RRT)$ tells you which kind of error you have}
+
+\author{Suvam Samanta\thanks{\texttt{suvam.samanta60@gmail.com}. Affiliation to be added.}}
+\date{Draft, 19 September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Time-resolved deep-learning surrogates for wall shear stress (WSS) are now
+routinely evaluated by a field error and by the cycle-averaged biomarkers
+$\TAWSS$, $\OSI$ and $\RRT$. We show that these three quantities are not
+independent measures of accuracy: they respond to the same field error
+$\eps$ through the cancellation ratio $R=|\int\boldsymbol\tau\,dt|/\int|\boldsymbol\tau|\,dt$,
+and the ratios between their errors are set by the \emph{type} of error,
+not its size. (i)~On exact Womersley flow over 279 cases ($\alpha=2$--$16$)
+the relative error of $R$ under a clock (period) error scales as
+$c\,(1/R-1)^{p}$ with $c=0.194$, $p=0.64$, $R^2=0.956$; first-order
+theory gives $p=1$, and the gap is open. (ii)~$\RRT$ is exactly invariant to
+temporal smoothing and $\eps$ must be the offset-removed field error, so a
+raw $L_2$ overstates biomarker error under drift. (iii)~On a
+POD\,+\,LSTM surrogate rolled out at an unseen heart rate on a patient
+middle-cerebral-artery aneurysm, a one-step RMSE of $7\times10^{-2}$ hides a
+clock that runs $1.4\%$ fast; the clock error is recoverable from the
+rollout alone without ground truth, but re-timing does not repair the
+biomarkers because $\sim80\%$ of the $\RRT$ error is beat-shape error.
+(iv)~Applied to the published error triple of an independent per-snapshot
+graph surrogate (RHSIA: $13.5/68.4/17.3\%$), the $\RRT/\TAWSS$ ratio of
+$1.28$ is reproduced by every error type on a low-reversal wall, whereas
+the $\OSI/\TAWSS$ ratio of $5.05$ discriminates: clock drift gives $1.2$,
+time-white noise $30$, and a time-frozen per-node bias $5$--$6$. The three
+numbers every surrogate paper already reports therefore diagnose whether
+the remedy is re-timing, smoothing, or a better model.
+\end{abstract}
+
+\section{Introduction}
+
+Surrogates that predict the WSS vector over the cardiac cycle from a vascular
+surface mesh are being proposed as a route to clinical use of CFD-derived
+biomarkers~\cite{npj2026,jekenrico2025,rhsia2026,rygiel2025}. They are
+graded by a relative $L_2$ error on the field and by the errors of the
+cycle-averaged biomarkers $\TAWSS$, $\OSI$ and $\RRT$. Across these papers
+$\OSI$ is reported as the hardest quantity, and the explanation offered is
+that $\OSI$ ``is numerically sensitive'' or ``is small over most of the
+surface''~\cite{rhsia2026,aaa2025}. The fragility of $\OSI$ to resolution,
+inflow and noise has been noted for a decade in the CFD and 4D-flow
+literature~\cite{sarrami2016,bergersen2017,mri2016}.
+
+This note makes the observation quantitative and turns it around. The three
+biomarkers are algebraic functions of two time integrals of the same field,
+and their errors under a common perturbation are coupled through one
+dimensionless number, the cancellation ratio $R$. Once that coupling is
+written down, the error of $\RRT$ relative to $\TAWSS$ follows from $R$,
+and the error of $\OSI$ relative to $\TAWSS$ becomes a fingerprint of the
+error's temporal structure. We verify the coupling on analytic flow, on two
+patient geometries with injected drift, on a trained surrogate, and on
+numbers published by an independent group.
+
+The work was carried out for the UnivaXBio hackathon (Devpost, October 2026),
+where the same analysis is packaged as an interactive ``unit test'' for
+hemodynamic surrogates. The present note records the scientific content
+separately so that it can be cited and checked.
+
+\section{Definitions and the cancellation law}
+
+Let $\boldsymbol\tau(t)$ be the WSS vector at a wall face over one period
+$T$. Define
+\begin{equation}
+M=\int_0^T|\boldsymbol\tau|\,dt,\qquad
+S=\Bigl|\int_0^T\boldsymbol\tau\,dt\Bigr|,\qquad
+R=\frac{S}{M}\in[0,1],
+\end{equation}
+so that
+\begin{equation}
+\TAWSS=\frac{M}{T},\qquad
+\OSI=\frac{1-R}{2},\qquad
+\RRT=\frac{1}{(1-2\,\OSI)\,\TAWSS}=\frac{T}{S}.
+\end{equation}
+$R$ is the fraction of the unsigned shear that survives the time integral;
+$1-R$ is what cancels. $\RRT$ is the reciprocal of the \emph{net} shear
+$S$ alone.
+
+\paragraph{First-order argument.}
+Perturb $\boldsymbol\tau\to\boldsymbol\tau+\delta\boldsymbol\tau$ with
+relative field error $\eps$. Then $\delta M\lesssim\eps M$, while
+$|\delta\mathbf S|\lesssim\int|\delta\boldsymbol\tau|\,dt\approx\eps M$, so
+$\delta S/S\lesssim\eps M/S=\eps/R$. For an error that scales with the local
+signal the two contributions are correlated and
+\begin{equation}
+\frac{\delta\RRT}{\RRT}\approx\frac{\delta\TAWSS}{\TAWSS}+\frac{\delta R}{R},
+\qquad
+\frac{\delta R}{R}\sim\eps\Bigl(\frac1R-1\Bigr).
+\label{eq:law}
+\end{equation}
+$\TAWSS$ error is $O(\eps)$ everywhere; $\RRT$ picks up an extra term that
+diverges as the cancellation ratio $R\to0$. This is the sense in which
+residence time is ill-conditioned: it divides by a small net integral.
+
+\paragraph{Empirical exponent.}
+We tested \eqref{eq:law} on exact Womersley flow in a rigid tube
+(\texttt{womersley\_sweep.py}): 279 cases with $\alpha\in[2,16]$, several
+pulsatility amplitudes, and clock errors $\rho\in\{1,2,5\}\%$ applied to the
+period. Figure~\ref{fig:womersley} shows $(\delta R/R)/\eps$ against
+$1/R-1$. A power-law fit gives
+\begin{equation}
+\frac{\delta R/R}{\eps}=c\Bigl(\frac1R-1\Bigr)^{p},\qquad
+c=0.194,\quad p=0.641,\quad R^2=0.956,
+\label{eq:fit}
+\end{equation}
+whereas the first-order form $p=1$ fits worse ($R^2=0.89$). We report $p$
+as empirical; the origin of $p<1$ (presumably partial cancellation of
+$\delta\boldsymbol\tau$ itself, which is oscillatory for a clock error) is
+left open.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/womersley_sweep.png}
+\caption{Womersley sweep. Relative error of the cancellation ratio per unit
+field error against $1/R-1$, with the power-law fit \eqref{eq:fit}.}
+\label{fig:womersley}
+\end{figure}
+
+\paragraph{Two exact corollaries.}
+(a)~Any temporal smoothing that preserves $\int\boldsymbol\tau\,dt$ leaves $S$,
+hence $\RRT$, unchanged: on the sweep the $\RRT$ error under a box filter is
+$7\times10^{-16}$. Smoothing changes $M$, so it changes $\TAWSS$ and $\OSI$
+but not residence time. (b)~A pure time shift of a periodic signal leaves all
+three cycle-averaged biomarkers unchanged. Hence $\eps$ in \eqref{eq:law}
+must be the field error \emph{after} removing the best global time offset;
+the raw $L_2$ between a drifting rollout and the truth grows with the
+accumulated lag and overstates biomarker error badly (Section~\ref{sec:lstm}).
+
+\paragraph{Per-face $\OSI$ and why it does not show in a norm.}
+From $\OSI=(1-R)/2$, $\delta\OSI/\OSI=-(R/(1-R))\,\delta R/R
+=\eps\,c\,(1/R-1)^{p-1}$ per face, which with $p<1$ grows as $\OSI\to0$.
+But in an $L_2$ norm over the wall the faces with large $\OSI$ dominate the
+denominator, and on those faces the same expression is small. For a
+drift-type error the law therefore predicts a norm-level $\OSI$ error
+\emph{below} the $\TAWSS$ error (Section~\ref{sec:fingerprint}). The often
+quoted ``$\OSI$ blows up because it is small'' is a per-face statement, and
+the large $\OSI$ norm errors reported in the literature come from a different
+mechanism.
+
+\section{Injected drift on patient CFD}
+
+\paragraph{Cases.}
+Two rigid-wall OpenFOAM (v2512) simulations with a physiological inflow
+waveform, run to periodicity:
+\begin{itemize}
+\item a middle-cerebral-artery bifurcation aneurysm (33\,406 wall faces,
+$\alpha\approx1.9$, inflow never reverses). Only $0.34\%$ of the wall has
+$\OSI>0.1$; the sac maximum is $0.085$. Area-averaged $\TAWSS=\SI{5.73}{Pa}$,
+$\OSI=0.0032$. This is the low-reversal control.
+\item an abdominal aortic aneurysm (Vascular Model Repository case AAA042,
+48\,345 wall faces, 17 cycles to a $2.7\%$ cycle-to-cycle floor). Flow
+reversal is physiological here; sac peak $\OSI=0.209$, $2.5\times$ the
+cerebral sac. Whole-wall averages are dominated by non-reversing iliac
+segments and are not comparable between the two cases; we compare sac to
+sac.
+\end{itemize}
+
+\paragraph{Protocol.}
+The converged last cycle is re-sampled with a clock error $\rho$ (the
+period is stretched by $1+\rho$ and the field is re-interpolated onto the
+original time grid), which mimics a surrogate whose limit cycle has the right
+shape but the wrong rate. Biomarkers are recomputed and compared to the
+unperturbed cycle over the whole wall, the sac, and the $\OSI>0.1$ region.
+
+\paragraph{Results.}
+On the cerebral case at $\rho=5\%$ the raw field $L_2$ is $10.8\%$ while
+$\TAWSS/\RRT$ errors are $2.47/2.54\%$ (wall), $3.44/3.57\%$ (sac) and
+$1.51/2.42\%$ on the $\OSI>0.1$ faces, i.e.\ $\RRT$ is amplified $1.6\times$
+only where cancellation is present, as \eqref{eq:law} predicts. On AAA042
+(Figure~\ref{fig:aaa}) the $\RRT$ amplification $(\delta\RRT/\RRT)/
+(\delta\TAWSS/\TAWSS)$ against $\OSI$ has a log--log slope of $+0.49$, in
+the cancellation-favouring direction; below $\rho\approx3\%$ the residual
+periodicity floor masks the injected error and only the trend is trusted.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/mechanism_test_aaa042_v2.png}
+\caption{AAA042: per-face $\RRT$ amplification versus $\OSI$ under injected
+clock drift on the periodic cycle.}
+\label{fig:aaa}
+\end{figure}
+
+\section{A real surrogate: POD\,+\,LSTM at an unseen heart rate}
+\label{sec:lstm}
+
+\paragraph{Model.}
+Ten POD modes capture $99.998\%$ of the WSS energy on the cerebral wall; the
+compressor alone gives $0.25\%$ field error and $\approx0\%$ $\RRT$ error.
+An LSTM is trained on latent trajectories of beats with $34$--$46$ samples
+per period (heart-rate augmentation by time stretch, valid at this low
+$\alpha$) and tested by autoregressive rollout on the unseen $40$-sample beat
+against the CFD truth. A model trained and tested on the same beat memorises
+it with zero drift and is kept as the baseline.
+
+\paragraph{What the usual metric says.}
+Teacher-forced one-step RMSE on the unseen beat is $7.3\times10^{-2}$ in
+latent units, the number a paper would normally report.
+
+\paragraph{What the rollout does.}
+Over six beats the raw field $L_2$ grows $7.8\%\to79\%$; after removing the
+best global offset it stays at $2$--$10\%$. Lag grows by $\approx0.7$ samples
+per beat. A 40-beat rollout is a clean limit cycle with spectral peaks at
+$1.013, 2.026, 3.038, 4.051$ per beat: the clock is $1.3\%$ fast, with a weak
+$\approx18$-beat wobble (sidebands at $+0.055$ per beat on mode~2). On the
+$\OSI>0.1$ faces the $\RRT$ error is $2.3$--$2.7\times$ the $\TAWSS$ error
+(Table~\ref{tab:lstm}), consistent with \eqref{eq:law}.
+
+\begin{table}[t]
+\centering
+\caption{POD\,+\,LSTM rollout on the unseen beat. Errors in \%. T/R =
+$\TAWSS$/$\RRT$.}
+\label{tab:lstm}
+\begin{tabular}{r r r c c c}
+\toprule
+beat & raw $L_2$ & lag (samples) & wall T/R & sac T/R & $\OSI>0.1$ T/R\\
+\midrule
+1 & 7.8 & 0.0 & 6.23/6.78 & 8.84/10.24 & 3.00/6.94\\
+2 & 31.2 & $-1.0$ & 7.72/8.59 & 11.59/13.93 & 3.78/9.40\\
+3 & 63.1 & $-2.6$ & 2.19/2.30 & 1.99/2.30 & 1.22/1.17\\
+4 & 55.6 & $-2.1$ & 9.16/10.40 & 13.36/16.64 & 4.33/11.00\\
+5 & 77.3 & $-3.8$ & 1.90/1.88 & 2.62/2.62 & 0.85/1.91\\
+6 & 78.9 & $-4.0$ & 1.50/1.56 & 3.54/3.77 & 1.50/4.11\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Truth-free clock diagnosis.}
+Treating the rollout as a limit cycle, the rate error is estimated from the
+rollout alone by fitting a single frequency scaling to its own phase
+(a phase-reduction view in the sense of Taira and Nakao; the method is that
+of~\cite{samanta2026} for bluff-body wakes). On six beats it returns $+1.66\%$
+against a ground-truth lag growth of $+1.98\%$; on 40 beats $+1.41\%$, in
+agreement with the spectral estimate; after re-timing the residual self-rate is
+$-0.03\%$ and the lag stays bounded in $[-2.6,0]$ samples over 40 beats
+(the raw lag reached $-20$ and wrapped). On a synthetic rollout with a known
+$2\%$ drift the estimate is $1.99\%$ and re-timing cuts $\RRT$ error
+$30\times$.
+
+\paragraph{Re-timing does not repair the biomarkers.}
+On the real rollout, mean $\RRT$ error after the transient moves from
+$4.95\to4.54\%$ (wall), $7.85\to7.09\%$ (sac), $5.52\to5.10\%$ ($\OSI>0.1$).
+A perfect-shape model with a $1.5\%$ clock error would give only
+$\approx0.8\%$ $\RRT$ error, so roughly $80\%$ of the error is beat shape and
+the slow wobble; $\RRT$ error tracks the offset-removed $L_2$, not the lag.
+The check has therefore done its job: it decomposes the error and says
+``re-timing will not help; improve the model''. Note also that with the
+Womersley constants \eqref{eq:fit} and the offset-removed
+$\eps=3.7\%$, the predicted excess $\RRT$ error in the top cancellation bin
+($1/R-1\in[1,10)$) is $0.8\%$ while the measured excess is $7.0\%$: the
+ordering across bins is right, the constant $c$ is not universal.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/phase_correct_hr.png}
+\caption{Truth-free clock estimate and re-timing on the six-beat rollout.}
+\label{fig:phase}
+\end{figure}
+
+\section{The error triple as a fingerprint, and an external check}
+\label{sec:fingerprint}
+
+The cerebral cycle was perturbed in four ways at matched field error
+$\eps$ and the biomarkers were scored with the mean-based relative $L_2$
+used by RHSIA~\cite{rhsia2026}, $\|X_{\rm pred}-X_{\rm true}\|_2/\|X_{\rm true}\|_2$
+over faces: (i)~clock drift; (ii)~Gaussian noise independent per face and per
+snapshot (\emph{white}); (iii)~Gaussian noise per face, constant in time
+(\emph{frozen} bias); (iv)~the law \eqref{eq:fit} applied face by face.
+Table~\ref{tab:fp} lists the results next to RHSIA's published Table~V,
+obtained on a per-snapshot graph model over intracranial aneurysm surfaces.
+
+\begin{table}[t]
+\centering
+\caption{Biomarker error ratios by error type on the cerebral wall,
+mean-based $rL_2$ in \%, versus RHSIA~\cite{rhsia2026} Table~V.}
+\label{tab:fp}
+\begin{tabular}{l r r r r r r}
+\toprule
+perturbation & $\eps$ & $\TAWSS$ & $\OSI$ & $\RRT$ & $\OSI/\TAWSS$ & $\RRT/\TAWSS$\\
+\midrule
+law \eqref{eq:fit}, per face & 13.5 & 13.5 & 5.1 & 13.6 & 0.37 & 1.00\\
+clock drift $\rho=5\%$ & 10.8 & 2.5 & 3.1 & 3.5 & 1.22 & 1.37\\
+white noise & 13.5 & 2.3 & 68.7 & 2.5 & 30 & 1.08\\
+frozen bias & 13.5--16 & 10--12 & 57--75 & 14--19 & 5.6--6.3 & 1.4--1.6\\
+\midrule
+RHSIA (published) & -- & 13.54 & 68.35 & 17.31 & 5.05 & 1.28\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two things follow. First, $\RRT/\TAWSS\approx1.3$ is obtained for every
+error type on a low-reversal wall and matches RHSIA's $1.28$: on such a wall
+\eqref{eq:law} reduces to $\delta\RRT\approx\delta\TAWSS$ plus a small
+cancellation term, and an independent model confirms it. Second,
+$\OSI/\TAWSS$ separates the error types by more than an order of magnitude,
+and only a time-coherent per-node bias reproduces RHSIA's $5.05$. That is
+the error one expects from a model that regresses each snapshot
+independently from geometry: its mistakes are spatial and persistent, not
+temporal. The fitted law, which describes drift, predicts $0.37$ and is
+simply the wrong model for that surrogate. The three numbers every surrogate
+paper already reports therefore say which remedy applies: a ratio near~1
+with a drifting lag calls for re-timing; a very large ratio with small
+$\TAWSS$ error indicates temporal noise that smoothing removes without
+touching $\RRT$; an intermediate ratio with comparable $\TAWSS$ and $\RRT$
+errors indicates spatial bias that only a better model repairs.
+
+The cerebral $\OSI$ distribution (median $7\times10^{-4}$, $94\%$ of faces
+below $0.01$) is used here as a proxy for RHSIA's surfaces; the
+frozen-bias numbers vary by $\pm15\%$ with the random seed.
+
+\section{Discussion and limitations}
+
+\begin{itemize}
+\item The coupling \eqref{eq:law} is elementary; its value is in the
+consequences that are routinely violated in practice: scoring a rollout by
+raw $L_2$, reading a large $\OSI$ error as a property of $\OSI$ rather than of
+the error, and reporting one-step accuracy for a model whose limit cycle
+runs at the wrong rate.
+\item $p=0.64$ is fitted on Womersley flow under clock error only. The
+exponent and prefactor did not transfer quantitatively to the LSTM rollout
+(ordering preserved, magnitude under-predicted up to $8\times$), and a
+derivation of $p<1$ is missing.
+\item Evidence rests on two geometries, one of which has very little
+reversal, and on a single small surrogate. The external check uses
+published aggregate numbers, not RHSIA's fields.
+\item Entrainment of the surrogate to an external clock (Arnold-tongue
+picture), a graph-network surrogate on the same data, and a systematic
+literature audit of which surrogate papers report $\OSI/\RRT$ and check for
+drift are future work.
+\end{itemize}
+
+\section*{Data and code availability}
+All scripts (\texttt{womersley\_sweep.py}, \texttt{pod\_lstm\_hr\_v2.py},
+\texttt{phase\_correct\_v2.py}, \texttt{mechanism\_test\_aaa042\_v2.py},
+\texttt{rhsia\_check\_v[1-3].py}) and the reduced data needed to reproduce
+the figures will be released with the hackathon submission at
+\url{https://github.com/Syphonicc/shear-drift}. AAA042 is from the Vascular
+Model Repository. OpenFOAM runs used CloudHPC.
+
+\section*{Acknowledgements}
+This work was carried out for the UnivaXBio hackathon (Devpost, October
+2026), where it is packaged as an interactive surrogate ``unit test''.
+The author thanks Sachidananda Behera for discussions.
+
+\begin{thebibliography}{9}
+\bibitem{npj2026} Physics-constrained graph neural network for real-time
+prediction of intracranial aneurysm hemodynamics. \emph{npj Digital Medicine}
+(2026). \url{https://doi.org/10.1038/s41746-026-02404-z}
+\bibitem{jekenrico2025} Graph deep learning for intracranial aneurysm blood
+flow simulation and risk assessment. arXiv:2512.09013 (2025).
+\bibitem{rhsia2026} Real-time pulsatile flow prediction for realistic,
+diverse intracranial aneurysm morphologies using a graph transformer and
+steady-flow data augmentation (RHSIA). arXiv:2601.19876v2 (2026).
+\bibitem{rygiel2025} Rapid wall shear stress prediction for aortic aneurysms
+using deep learning. \emph{Med.\ Biol.\ Eng.\ Comput.} (2025).
+\url{https://doi.org/10.1007/s11517-025-03311-3}
+\bibitem{aaa2025} Wall shear stress estimation in abdominal aortic aneurysms:
+towards generalisable neural surrogate models. arXiv:2507.22817 (2025).
+\bibitem{sarrami2016} Sarrami-Foroushani A.\ et al. Uncertainty
+quantification of wall shear stress in intracranial aneurysms using a
+data-driven statistical model of systemic blood flow variability.
+\emph{J.\ Biomech.} 49 (2016).
+\bibitem{bergersen2017} Bergersen A.\ W.\ et al. Robustness of common
+hemodynamic indicators with respect to numerical resolution in 38 middle
+cerebral artery aneurysms. \emph{PLoS ONE} 12 (2017) e0177566.
+\bibitem{mri2016} The effect of spatial and temporal resolution of cine
+phase-contrast MRI on wall shear stress and oscillatory shear index
+assessment. \emph{PLoS ONE} (2016). PMID 27669568.
+\bibitem{samanta2026} Samanta S., Behera S. Autoregressive rollout error in
+latent-space reduced-order models of bluff-body wakes is accumulated phase
+drift. arXiv:2608.07189 (2026).
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Shear Drift: cancellation-law diagnostics for time-resolved hemodynamic surrogates"
+authors:
+  - family-names: Samanta
+    given-names: Suvam
+    email: suvam.samanta60@gmail.com
+version: 0.1.0
+date-released: 2026-09-20
+repository-code: "https://github.com/Syphonicc/shear-drift"
+url: "https://syphonicc.github.io/shear-drift/"
+license: MIT
+keywords:
+  - hemodynamics
+  - wall shear stress
+  - surrogate models
+  - oscillatory shear index
+  - relative residence time
+  - reduced-order models
