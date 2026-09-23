@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shear Drift explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1F3; --panel:#F8FAFB; --ink:#15212B; --muted:#5A6873; --rule:#CBD4DA;
+  --trust:#1D6B73; --warn:#B7790A; --fail:#A8261F; --accent:#2C4A7A;
+  --a4:#7A8FA6; --a8:#2C4A7A; --a12:#1D6B73; --a16:#B7790A;
+  --serif:"Newsreader", Georgia, "Times New Roman", serif;
+  --sans:"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F171D; --panel:#16212A; --ink:#E4EAEE; --muted:#93A2AD; --rule:#2B3A45;
+    --trust:#4FB3B9; --warn:#E3A93A; --fail:#EE6A5F; --accent:#8DB0E6;
+    --a4:#8C9CAD; --a8:#8DB0E6; --a12:#4FB3B9; --a16:#E3A93A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F171D; --panel:#16212A; --ink:#E4EAEE; --muted:#93A2AD; --rule:#2B3A45;
+  --trust:#4FB3B9; --warn:#E3A93A; --fail:#EE6A5F; --accent:#8DB0E6;
+  --a4:#8C9CAD; --a8:#8DB0E6; --a12:#4FB3B9; --a16:#E3A93A;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 24px 64px}
+header{max-width:62ch;margin-bottom:22px}
+h1{font:600 clamp(28px,4.2vw,44px)/1.08 var(--serif);letter-spacing:-.01em;margin:0 0 10px}
+header p{margin:0;color:var(--muted);font-size:17px}
+h2{font:600 26px/1.2 var(--serif);margin:0 0 8px}
+p{max-width:68ch}
+.geopick{display:flex;gap:0;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;margin-bottom:18px;background:var(--panel)}
+.geopick button{font:500 13.5px var(--sans);color:var(--muted);background:transparent;border:0;border-right:1px solid var(--rule);padding:9px 14px;cursor:pointer}
+.geopick button:last-child{border-right:0}
+.geopick button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.stage{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:0;border:1px solid var(--rule);background:var(--panel);border-radius:4px;overflow:hidden}
+.viewer{position:relative;min-height:520px;border-right:1px solid var(--rule)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
+.maps{position:absolute;left:14px;top:14px;display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--panel)}
+.maps button{font:500 13px var(--sans);color:var(--muted);background:transparent;border:0;border-right:1px solid var(--rule);padding:7px 11px;cursor:pointer}
+.maps button:last-child{border-right:0}
+.maps button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.legend{position:absolute;left:14px;bottom:14px;right:14px;max-width:340px;font-size:12px;color:var(--muted)}
+.legend canvas{width:100%;height:10px;display:block;border-radius:2px;margin:4px 0 2px}
+.legend .ends{display:flex;justify-content:space-between}
+.legend .gatekey{display:flex;gap:14px;flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--rule);padding:8px 10px;font-size:12.5px;line-height:1.45;border-radius:3px;min-width:180px;display:none;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.tip b{font-weight:600}
+.hint{position:absolute;right:14px;top:16px;font-size:12px;color:var(--muted)}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;background:var(--panel)}
+.side{padding:22px 22px 24px;display:flex;flex-direction:column;gap:20px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.ctl label output{font:600 30px var(--serif)}
+.ctl small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+input[type=range]{width:100%;margin:10px 0 0;accent-color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.l2{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 0}
+.l2 span{color:var(--muted);font-size:14px}
+.l2 strong{font:600 20px var(--serif)}
+.regions{display:flex;flex-direction:column;gap:14px}
+.reg h3{font:600 14px var(--sans);margin:0 0 5px;display:flex;justify-content:space-between}
+.reg h3 em{font-style:normal;font-weight:500;color:var(--muted)}
+.bar{display:grid;grid-template-columns:52px 1fr 50px;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:3px 0}
+.bar .track{height:9px;background:var(--bg);border-radius:2px;overflow:hidden}
+.bar .fill{height:100%;width:0;border-radius:2px}
+.bar .v{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.verdict{font-size:14.5px;line-height:1.5;border-left:3px solid var(--trust);padding:2px 0 2px 12px;margin:0}
+.verdict.warn{border-color:var(--warn)}
+section.band{margin-top:48px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:40px;align-items:start}
+.formula{font:400 21px/1.4 var(--serif);margin:14px 0;padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.formula sup{font-size:.62em}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14.5px}
+dt{font:600 15px var(--serif)}
+dd{margin:0;color:var(--muted)}
+.chartbox{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:16px}
+#law{width:100%;height:340px;display:block}
+.calc{margin-top:14px}
+.calc p{margin:6px 0 0;font-size:14.5px}
+.calc strong{font:600 18px var(--serif)}
+.notes{margin-top:48px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;border-top:1px solid var(--rule);padding-top:22px}
+.notes h3{font:600 17px var(--serif);margin:0 0 6px}
+.notes p{font-size:14.5px;color:var(--muted);margin:0}
+.err{color:var(--fail)}
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr}
+  .viewer{border-right:0;border-bottom:1px solid var(--rule);min-height:420px}
+  section.band{grid-template-columns:1fr}
+  .notes{grid-template-columns:1fr}
+}
+
+.intro{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr);gap:28px;margin:0 0 26px;align-items:start}
+.intro header{margin:0}
+.plain{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:4px;padding:14px 16px;font-size:14.5px}
+.plain h3{font:600 17px var(--serif);margin:0 0 6px}
+.plain p{margin:0 0 8px;color:var(--muted)}
+.plain p:last-child{margin:0}
+.plain b{color:var(--ink)}
+.views{position:absolute;right:14px;top:40px;display:flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--panel)}
+.views button{font:500 12px var(--sans);color:var(--muted);background:transparent;border:0;border-right:1px solid var(--rule);padding:5px 9px;cursor:pointer}
+.views button:last-child{border-right:0}
+section.ai{margin-top:56px;border-top:1px solid var(--rule);padding-top:26px}
+.ai .lead{color:var(--muted);font-size:16px;max-width:70ch;margin:0 0 18px}
+.aigrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr);gap:24px;align-items:start}
+#aichart{width:100%;height:260px;display:block}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:12px 14px}
+.tile small{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.tile strong{display:block;font:600 26px/1.1 var(--serif);margin:3px 0 4px;font-variant-numeric:tabular-nums}
+.tile.ok strong{color:var(--trust)} .tile.bad strong{color:var(--fail)} .tile.warn strong{color:var(--warn)}
+.tablewrap{overflow-x:auto;margin-top:18px;border:1px solid var(--rule);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:12.5px}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.hi{color:var(--fail);font-weight:600}
+tr.ref td{background:var(--bg);font-weight:600}
+table.wrapfirst td:first-child,table.wrapfirst td:last-child{white-space:normal;min-width:180px}
+.verdict2{margin-top:16px;font-size:15px;border-left:3px solid var(--warn);padding:2px 0 2px 12px}
+.selftest{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;max-width:520px}
+.selftest.four{grid-template-columns:repeat(4,minmax(0,1fr));max-width:700px}
+.bandbar{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+.bandbar b{color:var(--ink);font-weight:600}
+.stout.amb{border-left:3px solid var(--warn);padding-left:10px}
+.selftest label{font-size:12.5px;color:var(--muted);display:block}
+.selftest input{width:100%;font:500 16px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:6px 8px;margin-top:3px}
+.stout{margin-top:12px;font-size:15px;padding:10px 12px;border-radius:3px;background:var(--panel);border:1px solid var(--rule)}
+.stout b{font-family:var(--serif);font-size:18px}
+.fp .lead{color:var(--muted);font-size:15.5px;max-width:70ch}
+@media (max-width:900px){
+  .intro,.aigrid{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .selftest,.selftest.four{grid-template-columns:1fr 1fr}
+  .maps{left:8px;top:8px;max-width:calc(100% - 16px)}
+  .maps button{padding:6px 8px;font-size:12px}
+  .hint{display:none}
+  .views{top:auto;bottom:64px;right:8px}
+  .legend{left:8px;right:8px;bottom:8px}
+  .wrap{padding:18px 16px 48px}
+  .geopick{width:100%}
+  .geopick button{flex:1;padding:8px 6px;font-size:12.5px;white-space:normal}
+  .ctl label output{font-size:24px}
+  .formula{font-size:17px}
+}
+@media (max-width:480px){ .tiles{grid-template-columns:1fr} .selftest,.selftest.four{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="intro">
+<header>
+  <h1>A surrogate can look accurate and still get residence time wrong.</h1>
+  <p>AI models that replace blood-flow simulation are scored by how well they match the flow field. That score does not tell you whether the residence-time biomarker doctors care about can be trusted. This page shows where it can't, on two real arteries, and what kind of error is to blame.</p>
+</header>
+<div class="plain">
+  <h3>Ten steps forward, nine steps back</h3>
+  <p>Blood at an artery wall pushes forward in systole and, in some places, backward in diastole. Two biomarkers summarise a heartbeat: <b>TAWSS</b> counts every step taken (10 + 9 = 19); <b>RRT</b>, the residence time, depends only on where you ended up (10 − 9 = 1).</p>
+  <p>Now let the model miscount one step. TAWSS is off by 1 in 19, about 5%. RRT is off by 1 in 1, <b>100%</b>. Same small error, opposite consequences. Everything below is that arithmetic, measured on real simulations and a real AI model.</p>
+</div>
+</div>
+
+<div class="geopick" role="group" aria-label="Geometry">
+  <button data-geo="cerebral" aria-pressed="true">Cerebral MCA aneurysm — control, no reversal</button>
+  <button data-geo="aaa042" aria-pressed="false">AAA042 — abdominal aortic aneurysm, physiological reversal</button>
+</div>
+
+<div class="stage">
+  <div class="viewer">
+    <canvas id="gl" aria-label="3D artery wall, drag to rotate, scroll to zoom"></canvas>
+    <div class="maps" role="group" aria-label="Map shown on the wall">
+      <button data-map="gate" aria-pressed="true">Reliability</button>
+      <button data-map="rrterr" aria-pressed="false">RRT error</button>
+      <button data-map="osi" aria-pressed="false">OSI</button>
+      <button data-map="tawss" aria-pressed="false">TAWSS</button>
+      <button data-map="rrt" aria-pressed="false">RRT</button>
+    </div>
+    <div class="hint">Drag to rotate, scroll to zoom, hover a spot</div>
+    <div class="views" role="group" aria-label="View"><button data-view="sac">Zoom to sac</button><button data-view="all">Whole wall</button></div>
+    <div class="legend" id="legend"></div>
+    <div class="tip" id="tip"></div>
+    <div class="loading" id="loading">Unpacking the wall mesh…</div>
+  </div>
+
+  <div class="side">
+    <div class="ctl">
+      <label for="rho">Surrogate clock error <output id="rhoOut">2.5%</output></label>
+      <input type="range" id="rho" min="0" max="10" step="1" value="5">
+      <small>How much faster the surrogate's cardiac cycle runs than the patient's, when that period is <em>not known</em> and the biomarkers are integrated over the patient's cycle — the situation for an autoregressive rollout. If the period is known, a pure clock error costs nothing; see the error-type table below.</small>
+    </div>
+
+    <div class="l2"><span>Whole-field error a model card would report</span><strong id="l2">–</strong></div>
+
+    <div class="regions" id="regions"></div>
+
+    <p class="verdict" id="verdict"></p>
+  </div>
+</div>
+
+<section class="band">
+  <div>
+    <h2>Why RRT breaks where blood reverses</h2>
+    <p>At each point of the wall, forward and backward shear partly cancel over a heartbeat. Time-averaged shear (TAWSS) adds them up, so errors stay proportionate. Residence time (RRT) depends on what survives the cancellation, so the same error is magnified. How much depends on the <em>kind</em> of error: the constants below were fitted for a clock/window error; a persistent spatial bias is punished about five times harder.</p>
+    <div class="formula">excess RRT error ≈ <span id="fc">0.19</span> × ε × (1/R − 1)<sup id="fp">0.64</sup></div>
+    <dl>
+      <dt>ε</dt><dd>how wrong the surrogate's flow field is overall</dd>
+      <dt>R</dt><dd>share of shear that survives cancellation: 1 for one-way flow, near 0 for back-and-forth</dd>
+      <dt>1/R − 1</dt><dd>cancellation factor: cancelled shear divided by surviving shear</dd>
+      <dt>0.64</dt><dd>exponent fitted on <span id="fn">279</span> exact pulsatile-flow cases (R² <span id="fr">0.96</span>)</dd>
+    </dl>
+    <div class="calc">
+      <label for="xf" style="font-weight:600;display:flex;justify-content:space-between">Try a cancellation factor <output id="xfOut">1.0</output></label>
+      <input type="range" id="xf" min="0" max="30" step="1" value="10">
+      <p id="calcOut"></p>
+    </div>
+  </div>
+  <div class="chartbox">
+    <canvas id="law" role="img" aria-label="Scatter plot of normalised residence-time error against cancellation factor, with fitted power law"></canvas>
+  </div>
+</section>
+
+<div style="margin-top:28px">
+  <h3 style="font:600 19px var(--serif);margin:0 0 6px">Which kinds of error does cancellation punish?</h3>
+  <p style="font-size:14.5px;color:var(--muted);margin:0 0 12px">Same cerebral wall, same 10.8% field error, four ways of being wrong. Median excess RRT error over TAWSS on the most-reversing faces (cancellation factor above 1). A pure clock error integrated over the surrogate's own period changes nothing — a point owed to Wenhao Ding (Imperial College London), quoted below.</p>
+  <div class="tablewrap" style="margin-top:0"><table id="lawtype" class="wrapfirst"></table></div>
+</div>
+
+
+<section class="ai">
+  <h2>A real AI model did this</h2>
+  <p class="lead">A POD + LSTM surrogate was trained on the cerebral CFD at six heart rates and asked to roll out the beat it had never seen. Its one-step accuracy is the kind of number a paper reports. Its rollout is what a clinician would actually use.</p>
+  <div class="aigrid">
+    <div class="chartbox">
+      <canvas id="aichart" role="img" aria-label="Leading flow mode over six heartbeats: CFD truth versus the surrogate rollout, which gradually runs ahead"></canvas>
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 0">Leading flow mode, normalised. <span style="color:var(--ink)">■</span> CFD truth &nbsp; <span style="color:var(--accent)">■</span> surrogate rollout. The model reproduces the beat shape, then its clock pulls ahead by about 0.7 samples per beat.</p>
+    </div>
+    <div class="tiles" id="aitiles"></div>
+  </div>
+  <div class="tablewrap"><table id="aitable"></table></div>
+  <p class="verdict2" id="aiverdict"></p>
+</section>
+
+<section class="ai fp">
+  <h2>Which kind of error does your model have?</h2>
+  <p class="lead">The three numbers every surrogate paper already reports are a fingerprint. Perturb the same cerebral wall three different ways at a similar field error and score it the way the literature does. Then compare with an independent published model, whose fields we never touched.</p>
+  <div class="tablewrap"><table id="fptable"></table></div>
+  <p class="verdict2" id="fpverdict"></p>
+  <div>
+    <p style="margin:18px 0 0;font-weight:600">Try your own model's numbers</p>
+    <p style="font-size:13.5px;color:var(--muted);margin:4px 0 0">The bands above were measured on a wall whose median OSI is 0.0007. They move with the geometry, so the fourth box matters: enter the median OSI of the wall your errors were computed on.</p>
+    <div class="selftest four">
+      <div><label for="stT">TAWSS error %</label><input id="stT" type="number" step="0.1" min="0" value="13.5"></div>
+      <div><label for="stO">OSI error %</label><input id="stO" type="number" step="0.1" min="0" value="68.4"></div>
+      <div><label for="stR">RRT error %</label><input id="stR" type="number" step="0.1" min="0" value="17.3"></div>
+      <div><label for="stM">median OSI of your wall</label><input id="stM" type="number" step="0.0001" min="0" max="0.5" value="0.0007"></div>
+    </div>
+    <p class="stout" id="stOut"></p>
+    <div class="tablewrap" style="margin-top:18px"><table id="bandtable" class="wrapfirst"></table></div>
+    <p style="font-size:13px;color:var(--muted);margin:8px 0 0">Typical values: intracranial aneurysm surfaces 0.0005–0.005; an abdominal aorta including non-reversing segments 0.0002–0.002; a sac or appendage taken alone 0.02–0.08. Above 0.05 this check is extrapolating past its calibration and says so.</p>
+  </div>
+</section>
+
+<section class="ai">
+  <h2>What researchers said</h2>
+  <p class="lead">Sent to twenty groups working on hemodynamic surrogates and biomarker robustness on 22 September 2026, with four questions. Replies are quoted with permission and the page is corrected where they were right.</p>
+  <div id="quotes" class="tiles" style="grid-template-columns:1fr"></div>
+</section>
+
+<div class="notes" id="notes"></div>
+</div>
+
+<script type="application/octet-stream" id="blob_cerebral">__BLOB_CEREBRAL__</script>
+<script type="application/json" id="meta_cerebral">__META_CEREBRAL__</script>
+<script type="application/octet-stream" id="blob_aaa042">__BLOB_AAA042__</script>
+<script type="application/json" id="meta_aaa042">__META_AAA042__</script>
+<script type="application/json" id="law_shared">__LAW__</script>
+<script type="application/json" id="sweep_shared">__SWEEP__</script>
+<script type="application/json" id="ai_data">__AI__</script>
+<script>/* three.js r128, vendored inline -- no CDN/network dependency */__THREEJS__</script>
+<script>
+(function(){
+"use strict";
+const LAW = JSON.parse(document.getElementById('law_shared').textContent);
+const SWEEP = JSON.parse(document.getElementById('sweep_shared').textContent);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = id => document.getElementById(id);
+const pct = (v, d=1) => (v*100).toFixed(d) + '%';
+
+$('fc').textContent = LAW.c.toFixed(2);
+$('fp').textContent = LAW.p.toFixed(2);
+$('fn').textContent = LAW.n;
+$('fr').textContent = LAW.r2.toFixed(2);
+
+const GEO_META = {
+  cerebral: JSON.parse(document.getElementById('meta_cerebral').textContent),
+  aaa042:   JSON.parse(document.getElementById('meta_aaa042').textContent),
+};
+const NOTES = {
+  cerebral: {
+    what: "Wall shear stress from a validated pulsatile CFD of a middle cerebral artery aneurysm (573k cells, periodic to 1e-5 between cycles). Surrogate drift is injected as a clock-rate error, so every number here is reproducible.",
+    artery: "Cerebral inflow never reverses, so almost the whole wall sits near R = 1 and the check correctly stays green. The law is exercised in its strong regime by the exact Womersley cases on the right, which include aortic-like reversal.",
+    claim: "The exponent is empirical and comes from straight, rigid tubes. A trained surrogate's own drift and a reversing aortic geometry are the next tests below.",
+  },
+  aaa042: {
+    what: "Wall shear stress from a pulsatile CFD of an abdominal aortic aneurysm (AAA-100 dataset, 412k cells), run 17 cardiac cycles to a 2.66% cycle-to-cycle floor before any drift was injected — the first 5 cycles were not yet periodic and are not used here.",
+    artery: "This inflow physiologically reverses (Mills/Olufsen triphasic waveform). Most of the wall still sits near R = 1 — the sac dominates this short modeled segment, diluting the whole-wall average — but a small, geometrically real hotspot at the sac (independent of any OSI threshold: ~0.04% of the wall, verified not adjacent to the outlet BCs) reaches OSI 0.21, 2.5× the cerebral case's sac peak of 0.085.",
+    claim: "The reversal is real and localized, not a boundary-condition artifact — checked directly by cross-referencing the hotspot's location against the outlet planes. Whole-wall-averaged OSI is not the right summary for this geometry; look at the sac, not the area-average. Note the \"RRT error, measured\" map runs hotter than the Reliability gate over a much wider patch of near-stagnant, low-TAWSS wall where OSI is actually ~0 — a small-denominator artifact in the raw measured error, not cancellation. The gate is not fooled by it because it keys on the cancellation factor, not raw error; that gap is itself evidence for why a calibrated gate beats a naive error map.",
+  },
+};
+
+// ---------------- state (per-geometry) ----------------
+let geoKey = 'cerebral';
+let level = 5, map = 'gate';
+let D = null, META = null, P = 0, F = 0, NL = 0;
+let scene, cam, renderer, key, ptrs;
+let mesh = null, colors = null, renderNow = null, target, rad = 1, dist = 1, th = 0.9, ph = 1.15, sacC = [0,0,0], sacR = 0;
+function setView(v){ if(v === 'sac' && sacR > 0){ target.set(sacC[0], sacC[1], sacC[2]); dist = Math.max(sacR*3.2, rad*0.45); } else { target.set(0,0,0); dist = rad*2.4; } renderNow(); }
+
+function hexToRgb(h){ h=h.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; }
+function lerp3(stops, t){
+  t = Math.min(1, Math.max(0, t));
+  const s = t*(stops.length-1), i = Math.min(stops.length-2, Math.floor(s)), f = s-i;
+  const a = stops[i], b = stops[i+1];
+  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+}
+const SEQ = ['#26185F','#18599A','#1F8F95','#7CBF6E','#EFD55A'].map(hexToRgb);
+const ERR = ['#C9D3D9','#8FA9B8','#D7A13B','#C2451F','#7A1411'].map(hexToRgb);
+
+// ---------------- data access ----------------
+function base(k, f){ return D.base[k*F + f]; }
+function relErr(k, f){ return level === 0 ? 0 : D.rel[(level-1)*3*F + k*F + f] * 1e-5; }
+function eps(){ return META.stats[level].field_l2; }
+function predExcess(f){ return LAW.c * eps() * Math.pow(D.X[f], LAW.p); }
+function gateOf(e){ return e < 0.01 ? 0 : e < 0.05 ? 1 : 2; }
+
+const MAPS = {
+  gate:   {label:'Predicted extra RRT error beyond TAWSS', kind:'gate'},
+  rrterr: {label:'RRT error, measured', lo:0, hi:0.06, fmt:v=>pct(v,0), val:f=>Math.abs(relErr(2,f)), cmap:ERR},
+  osi:    {label:'Oscillatory shear index', lo:0, hi:0.2, fmt:v=>v.toFixed(2), val:f=>base(1,f), cmap:SEQ},
+  tawss:  {label:'Time-averaged wall shear stress (Pa, log)', lo:Math.log10(0.03), hi:Math.log10(30), fmt:v=>(10**v).toPrecision(1), val:f=>Math.log10(Math.max(base(0,f),1e-3)), cmap:SEQ},
+  rrt:    {label:'Relative residence time (1/Pa, log)', lo:Math.log10(0.03), hi:Math.log10(3), fmt:v=>(10**v).toPrecision(1), val:f=>Math.log10(Math.max(base(2,f),1e-4)), cmap:SEQ},
+};
+
+// ---------------- colouring ----------------
+function recolor(){
+  if(!D) return;
+  const m = MAPS[map];
+  const g = [css('--trust'), css('--warn'), css('--fail')].map(hexToRgb);
+  const counts = [0,0,0];
+  for(let f=0; f<F; f++){
+    let c;
+    if(m.kind === 'gate'){ const k = gateOf(predExcess(f)); counts[k]++; c = g[k]; }
+    else c = lerp3(m.cmap, (m.val(f)-m.lo)/(m.hi-m.lo));
+    const o = f*9;
+    colors[o]=colors[o+3]=colors[o+6]=c[0];
+    colors[o+1]=colors[o+4]=colors[o+7]=c[1];
+    colors[o+2]=colors[o+5]=colors[o+8]=c[2];
+  }
+  mesh.geometry.attributes.color.needsUpdate = true;
+  drawLegend(m, counts);
+  renderNow();
+}
+
+function drawLegend(m, counts){
+  const L = $('legend');
+  if(m.kind === 'gate'){
+    const share = i => (100*counts[i]/F).toFixed(1) + '%';
+    L.innerHTML = `<div>${m.label}, share of wall</div>
+      <div class="gatekey" style="margin-top:5px">
+        <span><i class="sw" style="background:var(--trust)"></i>under 1%: ${share(0)}</span>
+        <span><i class="sw" style="background:var(--warn)"></i>1–5%: ${share(1)}</span>
+        <span><i class="sw" style="background:var(--fail)"></i>over 5%: ${share(2)}</span>
+      </div>`;
+    return;
+  }
+  L.innerHTML = `<div>${m.label}</div><canvas id="lg" width="340" height="10"></canvas>
+    <div class="ends"><span>${m.fmt(m.lo)}</span><span>${m.fmt((m.lo+m.hi)/2)}</span><span>${m.fmt(m.hi)}</span></div>`;
+  const cv = $('lg'), cx = cv.getContext('2d');
+  for(let x=0; x<cv.width; x++){ const c = lerp3(m.cmap, x/(cv.width-1)); cx.fillStyle=`rgb(${c.map(v=>Math.round(v*255))})`; cx.fillRect(x,0,1,10); }
+}
+
+// ---------------- side panel ----------------
+const REGIONS = [['wall','Whole wall'],['sac','Aneurysm sac'],['osi_gt_0.1','Oscillating wall (OSI > 0.1)']];
+function updatePanel(){
+  const r = META.levels[level];
+  $('rhoOut').textContent = pct(r);
+  $('l2').textContent = pct(eps());
+  const s = META.stats[level], scale = 0.06;
+  $('regions').innerHTML = REGIONS.map(([k,name]) => {
+    const t = s[k].tawss, q = s[k].rrt, ratio = t > 1e-9 ? q/t : 1;
+    const bar = (lab, v, col) => `<div class="bar"><span>${lab}</span><div class="track"><div class="fill" style="width:${Math.min(100,100*v/scale)}%;background:${col}"></div></div><span class="v">${pct(v)}</span></div>`;
+    return `<div class="reg"><h3>${name}<em>${level ? 'RRT ' + ratio.toFixed(2) + '× TAWSS' : ''}</em></h3>
+      ${bar('TAWSS', t, 'var(--trust)')}${bar('RRT', q, ratio > 1.3 ? 'var(--warn)' : 'var(--accent)')}</div>`;
+  }).join('');
+  const w = s.wall, o = s['osi_gt_0.1'], v = $('verdict');
+  if(level === 0){ v.className='verdict'; v.textContent = 'No drift: the surrogate reproduces the CFD exactly. Move the slider.'; }
+  else {
+    const ro = o.rrt / Math.max(o.tawss, 1e-9);
+    v.className = ro > 1.3 ? 'verdict warn' : 'verdict';
+    const oscText = ro > 1.3
+      ? `Where it does oscillate, RRT pulls ahead to ${ro.toFixed(2)}×, as the cancellation law predicts.`
+      : `The oscillating-wall region here is a small sample (few cells), so its ${ro.toFixed(2)}× ratio is noisy — read the sac and whole-wall rows, not this one, for the geometry's real signal.`;
+    v.textContent = `The flow field is off by ${pct(eps())}, yet across most of this wall RRT tracks TAWSS (${(w.rrt/Math.max(w.tawss,1e-9)).toFixed(2)}×) because blood here barely reverses. ${oscText}`;
+  }
+  const n = NOTES[geoKey];
+  $('notes').innerHTML = `
+    <div><h3>What the data is</h3><p>${n.what}</p></div>
+    <div><h3>What this artery says</h3><p>${n.artery}</p></div>
+    <div><h3>What it does not claim</h3><p>${n.claim}</p></div>`;
+  updateCalc();
+}
+
+function updateCalc(){
+  const x = +$('xf').value / 10;
+  $('xfOut').textContent = x.toFixed(1);
+  const e = LAW.c * eps() * Math.pow(x, LAW.p);
+  const R = 1/(1+x), osi = (1-R)/2;
+  $('calcOut').innerHTML = x === 0
+    ? 'One-way flow: residence time is as reliable as mean shear.'
+    : `R = ${R.toFixed(2)} (OSI ${osi.toFixed(2)}). At the current ${pct(eps())} field error, RRT drifts an extra <strong>${pct(e)}</strong> beyond TAWSS.`;
+  drawLaw();
+}
+
+// ---------------- law chart (shared across geometries) ----------------
+let X99 = 0, XSAC = 0;
+function drawLaw(){
+  const cv = $('law'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+  const pad = {l:52, r:14, t:14, b:44};
+  const x0=Math.log10(0.04), x1=Math.log10(3.2), y0=Math.log10(0.015), y1=Math.log10(0.6);
+  const X = v => pad.l + (Math.log10(v)-x0)/(x1-x0)*(W-pad.l-pad.r);
+  const Y = v => H-pad.b - (Math.log10(v)-y0)/(y1-y0)*(H-pad.t-pad.b);
+  const ink = css('--ink'), mut = css('--muted'), rule = css('--rule');
+  c.font = `12px ${css('--sans')}`; c.lineWidth = 1;
+  c.strokeStyle = rule; c.fillStyle = mut; c.textAlign = 'center';
+  [0.05,0.1,0.2,0.5,1,2].forEach(v => { c.beginPath(); c.moveTo(X(v),pad.t); c.lineTo(X(v),H-pad.b); c.stroke(); c.fillText(v, X(v), H-pad.b+16); });
+  c.textAlign = 'right';
+  [0.02,0.05,0.1,0.2,0.5].forEach(v => { c.beginPath(); c.moveTo(pad.l,Y(v)); c.lineTo(W-pad.r,Y(v)); c.stroke(); c.fillText(v, pad.l-6, Y(v)+4); });
+  c.fillStyle = ink; c.textAlign = 'center';
+  c.fillText('cancellation factor  1/R − 1', pad.l + (W-pad.l-pad.r)/2, H-8);
+  c.save(); c.translate(14, pad.t + (H-pad.t-pad.b)/2); c.rotate(-Math.PI/2); c.fillText('RRT excess ÷ field error', 0, 0); c.restore();
+  c.fillStyle = mut; c.globalAlpha = .12;
+  c.fillRect(pad.l, pad.t, X(Math.max(X99,0.041))-pad.l, H-pad.t-pad.b);
+  c.globalAlpha = 1; c.textAlign = 'left'; c.fillStyle = mut;
+  c.fillText('99% of this artery', pad.l+6, pad.t+14);
+  if(XSAC > 0.04){ c.strokeStyle = mut; c.setLineDash([3,3]); c.beginPath(); c.moveTo(X(XSAC),pad.t); c.lineTo(X(XSAC),H-pad.b); c.stroke(); c.setLineDash([]); c.fillText('sac max', X(XSAC)+4, pad.t+30); }
+  const col = {4:css('--a4'), 8:css('--a8'), 12:css('--a12'), 16:css('--a16')};
+  (SWEEP||[]).forEach(([x,y,a]) => { c.fillStyle = col[a] || ink; c.beginPath(); c.arc(X(x),Y(y),3,0,7); c.fill(); });
+  c.strokeStyle = ink; c.lineWidth = 1.6; c.beginPath();
+  for(let i=0;i<=60;i++){ const v = 10**(x0 + (x1-x0)*i/60), y = LAW.c*Math.pow(v, LAW.p); const px=X(v), py=Y(y); i?c.lineTo(px,py):c.moveTo(px,py); }
+  c.stroke();
+  const xv = +$('xf').value/10;
+  if(xv >= 0.04){ const y = LAW.c*Math.pow(xv, LAW.p); c.fillStyle = css('--fail'); c.beginPath(); c.arc(X(xv),Y(y),5.5,0,7); c.fill(); }
+  c.textAlign = 'left'; let kx = W-pad.r-200, ky = H-pad.b-58;
+  c.fillStyle = css('--panel'); c.fillRect(kx-8, ky-14, 198, 58);
+  [[4,'α 4'],[8,'α 8'],[12,'α 12'],[16,'α 16 (aorta-like)']].forEach(([a,l],i) => {
+    const xx = kx + (i%2)*88, yy = ky + Math.floor(i/2)*18;
+    c.fillStyle = col[a]; c.beginPath(); c.arc(xx+4,yy-4,3.5,0,7); c.fill(); c.fillStyle = mut; c.fillText(l, xx+12, yy);
+  });
+  c.strokeStyle = ink; c.beginPath(); c.moveTo(kx, ky+32); c.lineTo(kx+18, ky+32); c.stroke();
+  c.fillStyle = mut; c.fillText('fitted law', kx+24, ky+36);
+}
+
+
+// ---------------- AI panel ----------------
+const AI = JSON.parse(document.getElementById('ai_data').textContent);
+function drawAI(){
+  const cv = $('aichart'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight; if(!W) return;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+  const pad = {l:36, r:10, t:12, b:28}, n = AI.roll_m1.length, T = AI.T;
+  const X = i => pad.l + i/(n-1)*(W-pad.l-pad.r);
+  const Y = v => H-pad.b - (v+1.1)/2.2*(H-pad.t-pad.b);
+  const ink = css('--ink'), mut = css('--muted'), rule = css('--rule');
+  c.font = `12px ${css('--sans')}`; c.lineWidth = 1; c.strokeStyle = rule; c.fillStyle = mut; c.textAlign = 'center';
+  for(let b=0; b<=AI.beats; b++){ const x = X(Math.min(n-1, b*T)); c.beginPath(); c.moveTo(x,pad.t); c.lineTo(x,H-pad.b); c.stroke(); if(b<AI.beats) c.fillText('beat '+(b+1), X(b*T+T/2), H-8); }
+  c.strokeStyle = rule; c.beginPath(); c.moveTo(pad.l,Y(0)); c.lineTo(W-pad.r,Y(0)); c.stroke();
+  c.textAlign='right'; c.fillText('+1', pad.l-6, Y(1)+4); c.fillText('−1', pad.l-6, Y(-1)+4); c.fillText('0', pad.l-6, Y(0)+4);
+  const line = (arr, col, w) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); arr.forEach((v,i) => i ? c.lineTo(X(i),Y(v)) : c.moveTo(X(i),Y(v))); c.stroke(); };
+  line(AI.truth_m1, ink, 1.4);
+  line(AI.roll_m1, css('--accent'), 2);
+}
+function buildAI(){
+  const cy = AI.cycles, last = cy[cy.length-1], first = cy[0];
+  const oscRatio = cy.map(x => x.osc[1]/Math.max(x.osc[0],1e-9)).filter(v => isFinite(v)).sort((a,b)=>a-b);
+  const rmin = oscRatio[0].toFixed(1), rmax = oscRatio[oscRatio.length-1].toFixed(1), rmed = oscRatio[Math.floor(oscRatio.length/2)].toFixed(1);
+  const mean = k => cy.slice(1).reduce((a,x)=>a+x[k][1],0)/(cy.length-1), meanc = k => cy.slice(1).reduce((a,x)=>a+x[k][2],0)/(cy.length-1);
+  const tile = (cls, big, small) => `<div class="tile ${cls}"><small>${small.split('|')[0]}</small><strong>${big}</strong><small>${small.split('|')[1]||''}</small></div>`;
+  $('aitiles').innerHTML =
+    tile('ok', AI.one_step_rmse.toFixed(3), 'One-step error on the unseen beat|the number a paper would report; looks fine') +
+    tile('bad', pct(last.l2,0), `Raw field error after ${cy.length} beats|started at ${pct(first.l2,0)}; a dashboard would call this a failure`) +
+    tile('warn', pct(last.l2a,1), 'Same beat, clock removed|most of the raw error was timing, not shape') +
+    tile('bad', `${rmed}×`, `RRT error ÷ TAWSS error, oscillating wall (median)|range ${rmin}–${rmax}× over ${cy.length} beats: the cancellation law on a real rollout`) +
+    tile('ok', '+' + pct(AI.rho_self6,2), `Clock error read from the rollout alone|truth: +${pct(AI.rho_truth6,2)}; ${AI.beats40} beats: +${pct(AI.rho_self40,2)}. No ground truth needed`) +
+    tile('warn', `${pct(mean('wall'),1)} → ${pct(meanc('wall'),1)}`, 'Wall RRT error before → after re-timing|barely moves: the clock is not the main problem');
+  $('aitable').innerHTML = `<thead><tr><th>beat</th><th>raw L2</th><th>L2, clock removed</th><th>lag (samples)</th><th>lag after re-timing</th><th>wall TAWSS / RRT</th><th>sac TAWSS / RRT</th><th>oscillating TAWSS / RRT</th></tr></thead><tbody>` +
+    cy.map((x,i) => { const r = x.osc[1]/Math.max(x.osc[0],1e-9);
+      return `<tr><td>${i+1}</td><td>${pct(x.l2,1)}</td><td>${pct(x.l2a,1)}</td><td>${x.lag.toFixed(1)}</td><td>${x.lag_cor.toFixed(1)}</td><td>${pct(x.wall[0],1)} / ${pct(x.wall[1],1)}</td><td>${pct(x.sac[0],1)} / ${pct(x.sac[1],1)}</td><td${r>1.3?' class="hi"':''}>${pct(x.osc[0],1)} / ${pct(x.osc[1],1)}</td></tr>`; }).join('') + '</tbody>';
+  $('aiverdict').textContent = `Verdict for this model: the check recovers its clock error without ground truth, but re-timing repairs only about a fifth of the RRT error. The rest is beat shape and a slow wobble. Fix the model, not the clock.`;
+  drawAI();
+}
+
+// ---------------- fingerprint ----------------
+function bandsAt(medOSI){
+  const B = AI.bands, xs = B.map(b=>Math.log(b.osi));
+  const x = Math.log(Math.max(1e-5, medOSI));
+  const pick = k => {
+    if(x <= xs[0]) return B[0][k];
+    if(x >= xs[xs.length-1]) return B[B.length-1][k];
+    for(let i=0;i<xs.length-1;i++) if(x>=xs[i] && x<=xs[i+1]){
+      const f=(x-xs[i])/(xs[i+1]-xs[i]);
+      return Math.exp(Math.log(B[i][k])*(1-f)+Math.log(B[i+1][k])*f);
+    }
+  };
+  return {window:pick('window'), noise:pick('noise'), bias:pick('bias'),
+          extrapolating: medOSI > B[B.length-1].osi*1.05};
+}
+const REMEDY = {
+  window: 'Estimate the period from the rollout itself and integrate over that. If RRT does not improve, the beat shape is wrong too.',
+  noise:  'Temporal smoothing will fix OSI and TAWSS and, because smoothing preserves the net shear, leave RRT exactly as it is.',
+  bias:   'Neither re-timing nor smoothing will help; the model itself needs to improve.'
+};
+const LABEL = {window:'a window mismatch (wrong or unknown period)', noise:'frame-to-frame noise', bias:'a persistent spatial bias'};
+function classify(t, o, r, medOSI){
+  const ro = o/Math.max(t,1e-9), rr = r/Math.max(t,1e-9);
+  const b = bandsAt(medOSI === undefined ? AI.bands[0].osi : medOSI);
+  const d = ['window','noise','bias'].map(k => ({k, c:b[k], d:Math.abs(Math.log(ro/b[k]))}))
+                                     .sort((p,q)=>p.d-q.d);
+  const first = d[0], second = d[1];
+  // ambiguous if the runner-up is nearly as close, or if the two band centres nearly coincide
+  const sep = Math.abs(Math.log(second.c/first.c));
+  const amb = (second.d - first.d) < Math.log(1.35) || sep < Math.log(1.7);
+  const lead = `OSI &divide; TAWSS = <b>${ro.toFixed(1)}</b>, RRT &divide; TAWSS = <b>${rr.toFixed(2)}</b>. At median OSI ${(+medOSI).toPrecision(2)} the bands are ${b.window.toFixed(1)} / ${b.noise.toFixed(1)} / ${b.bias.toFixed(1)} for window mismatch / noise / bias.`;
+  let txt, k = first.k;
+  if(amb){
+    k = 'ambiguous';
+    txt = `${lead} Your ratio sits between <b>${LABEL[first.k]}</b> and <b>${LABEL[second.k]}</b>, and on a wall this reversing those two bands are too close to separate. <b>The check cannot diagnose this geometry from the triple alone</b> — recalibrate the bands by injecting each error type into your own CFD, which is what the rows above do for a cerebral wall.`;
+  } else {
+    txt = `${lead} Closest band by a clear margin: <b>${LABEL[k]}</b>. ${REMEDY[k]}`;
+  }
+  if(b.extrapolating) txt += ` <b>Caution:</b> the calibration only extends to median OSI 0.05; beyond that these bands are extrapolated and the separation is known to collapse.`;
+  return {k, txt, bands:b, ro, rr};
+}
+function buildBands(){
+  $('bandtable').innerHTML = `<thead><tr><th>calibration subset of this wall</th><th>faces</th><th>median OSI</th><th>window mismatch</th><th>frame noise</th><th>spatial bias</th></tr></thead><tbody>` +
+    AI.bands.map(b => `<tr><td>${b.name}</td><td>${b.n.toLocaleString()}</td><td>${b.osi.toFixed(4)}</td><td>${b.window.toFixed(2)}</td><td>${b.noise.toFixed(1)}</td><td>${b.bias.toFixed(2)}</td></tr>`).join('') +
+    '</tbody>';
+}
+function buildFP(){
+  const fp = AI.fingerprint, rh = AI.rhsia;
+  const row = (name, t, o, r, fix, cls='') => `<tr class="${cls}"><td>${name}</td><td>${t.toFixed(1)}</td><td>${o.toFixed(1)}</td><td>${r.toFixed(1)}</td><td>${(o/t).toFixed(1)}</td><td>${(r/t).toFixed(2)}</td><td style="text-align:left">${fix}</td></tr>`;
+  $('fptable').innerHTML = `<thead><tr><th>error type (cerebral wall, injected)</th><th>TAWSS %</th><th>OSI %</th><th>RRT %</th><th>OSI ÷ TAWSS</th><th>RRT ÷ TAWSS</th><th style="text-align:left">remedy</th></tr></thead><tbody>` +
+    fp.map(x => row(x.type, x.tawss, x.osi, x.rrt, x.fix)).join('') +
+    row(`Published graph surrogate, RHSIA (${rh.ref})`, rh.tawss, rh.osi, rh.rrt, classify(rh.tawss, rh.osi, rh.rrt, AI.bands[0].osi).k === 'bias' ? 'matches frozen bias' : '', 'ref') + '</tbody>';
+  $('fpverdict').innerHTML = `RRT ÷ TAWSS sits near 1.3 for every error type on a wall that barely reverses, and the published model lands there too: the law's prediction, confirmed on someone else's surrogate. OSI ÷ TAWSS separates the error types by more than an order of magnitude. RHSIA's 5.0 matches a frozen per-node bias, which is exactly what a model that predicts each frame separately from geometry produces. Its remedy is a better model, not re-timing or smoothing. The bands are not universal, though: they are measured on this wall, and they tighten as a geometry reverses more (see the table below). On a strongly reversing wall the three types are separated by less than a factor of four, and the check says so rather than guessing.`;
+  const st = () => {
+    const t=+$('stT').value, o=+$('stO').value, r=+$('stR').value, m=+$('stM').value;
+    const out=$('stOut');
+    if(!(t>0) || !(m>0)){ out.className='stout'; out.textContent='Enter a TAWSS error and a median OSI above zero.'; return; }
+    const c = classify(t,o,r,m);
+    out.className = 'stout' + (c.k==='ambiguous' ? ' amb' : '');
+    out.innerHTML = c.txt;
+  };
+  ['stT','stO','stR','stM'].forEach(id => $(id).addEventListener('input', st)); st();
+}
+
+// ---------------- error-type table + quotes ----------------
+function buildLawType(){
+  const rows = AI.lawtype;
+  $('lawtype').innerHTML = `<thead><tr><th>error type</th><th>field error</th><th>excess RRT error, most-reversing faces</th><th>law predicts</th><th style="text-align:left">reading</th></tr></thead><tbody>` +
+    rows.map(r => `<tr${r.hi?' class="ref"':''}><td>${r.type}</td><td>${r.eps.toFixed(1)}%</td><td${r.hi?' class="hi"':''}>${r.excess.toFixed(2)}%</td><td>${r.law===null?'—':r.law.toFixed(2)+'%'}</td><td style="text-align:left">${r.note}</td></tr>`).join('') + '</tbody>';
+}
+function buildQuotes(){
+  $('quotes').innerHTML = AI.quotes.map(q => `<div class="tile"><p style="margin:0 0 8px;font:400 15.5px/1.5 var(--serif)">“${q.text}”</p><small>${q.who}${q.on?' — on '+q.on:''}</small></div>`).join('');
+}
+
+// ---------------- 3D ----------------
+function initGLOnce(){
+  const cv = $('gl');
+  renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+  scene = new THREE.Scene();
+  cam = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  key = new THREE.DirectionalLight(0xffffff, 0.6); scene.add(key);
+  target = new THREE.Vector3();
+
+  function place(){
+    cam.position.set(target.x + dist*Math.sin(ph)*Math.cos(th), target.y + dist*Math.sin(ph)*Math.sin(th), target.z + dist*Math.cos(ph));
+    cam.up.set(0,0,1); cam.lookAt(target); key.position.copy(cam.position);
+  }
+  let queued = false;
+  renderNow = () => { if(queued) return; queued = true; requestAnimationFrame(() => { queued = false; place(); renderer.render(scene, cam); }); };
+  function resize(){
+    const w = cv.clientWidth, h = cv.clientHeight;
+    renderer.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix(); renderNow();
+  }
+  new ResizeObserver(resize).observe(cv);
+
+  ptrs = new Map(); let pinch0 = 0, dist0 = dist;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY}); if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); dist0=dist; } });
+  cv.addEventListener('pointermove', e => {
+    const p = ptrs.get(e.pointerId);
+    if(!p){ hover(e); return; }
+    if(ptrs.size === 1){
+      th -= (e.clientX-p.x)*0.008; ph = Math.min(3.1, Math.max(0.05, ph - (e.clientY-p.y)*0.008));
+    }
+    p.x = e.clientX; p.y = e.clientY;
+    if(ptrs.size === 2){ const [a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); if(pinch0) dist = Math.min(rad*6, Math.max(rad*0.4, dist0*pinch0/d)); }
+    $('tip').style.display='none'; renderNow();
+  });
+  const up = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('pointerleave', () => $('tip').style.display='none');
+  cv.addEventListener('wheel', e => { e.preventDefault(); dist = Math.min(rad*6, Math.max(rad*0.4, dist*Math.exp(e.deltaY*0.0012))); renderNow(); }, {passive:false});
+
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let hoverQueued = false, lastEv = null;
+  function hover(e){
+    lastEv = e; if(hoverQueued) return; hoverQueued = true;
+    requestAnimationFrame(() => {
+      hoverQueued = false;
+      const r = cv.getBoundingClientRect();
+      ndc.set(((lastEv.clientX-r.left)/r.width)*2-1, -((lastEv.clientY-r.top)/r.height)*2+1);
+      ray.setFromCamera(ndc, cam);
+      const hit = mesh ? ray.intersectObject(mesh)[0] : null, tip = $('tip');
+      if(!hit){ tip.style.display='none'; return; }
+      const f = hit.faceIndex, e1 = predExcess(f), gk = ['reliable','use with caution','do not trust'][gateOf(e1)];
+      tip.innerHTML = `<b>${D.sac[f] ? 'Aneurysm sac' : 'Vessel wall'}</b><br>
+        TAWSS ${base(0,f).toFixed(2)} Pa, OSI ${base(1,f).toFixed(3)}<br>
+        RRT ${base(2,f).toFixed(3)} /Pa<br>
+        Cancellation factor ${D.X[f].toFixed(3)}<br>
+        At ${pct(META.levels[level])} drift: TAWSS ${pct(Math.abs(relErr(0,f)))}, RRT ${pct(Math.abs(relErr(2,f)))}<br>
+        <b>RRT here: ${gk}</b>`;
+      const tx = lastEv.clientX - r.left + 14, ty = lastEv.clientY - r.top + 14;
+      tip.style.display = 'block';
+      tip.style.left = Math.min(tx, r.width - tip.offsetWidth - 8) + 'px';
+      tip.style.top = Math.min(ty, r.height - tip.offsetHeight - 8) + 'px';
+    });
+  }
+  resize();
+}
+
+function buildMeshFor(D_, P_, F_){
+  if(mesh){ scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); }
+  const pos = new Float32Array(F_*9);
+  let cx=0, cy=0, cz=0;
+  for(let i=0;i<P_;i++){ cx+=D_.pts[3*i]; cy+=D_.pts[3*i+1]; cz+=D_.pts[3*i+2]; }
+  cx/=P_; cy/=P_; cz/=P_;
+  rad = 0;
+  for(let f=0; f<F_; f++) for(let v=0; v<3; v++){
+    const p = D_.tri[3*f+v], o = 9*f+3*v;
+    pos[o]=D_.pts[3*p]-cx; pos[o+1]=D_.pts[3*p+1]-cy; pos[o+2]=D_.pts[3*p+2]-cz;
+    rad = Math.max(rad, Math.hypot(pos[o],pos[o+1],pos[o+2]));
+  }
+  colors = new Float32Array(F_*9);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({vertexColors:true, side:THREE.DoubleSide}));
+  scene.add(mesh);
+
+  let sc=0,sn=0,sz=0,ns=0;
+  for(let f=0; f<F_; f++) if(D_.sac[f]){ const o=9*f; sc+=pos[o]; sn+=pos[o+1]; sz+=pos[o+2]; ns++; }
+  sacC = ns ? [sc/ns, sn/ns, sz/ns] : [0,0,0];
+  sacR = 0;
+  if(ns) for(let f=0; f<F_; f++) if(D_.sac[f]){ const o=9*f; sacR = Math.max(sacR, Math.hypot(pos[o]-sacC[0], pos[o+1]-sacC[1], pos[o+2]-sacC[2])); }
+  setView('sac');
+}
+
+// ---------------- load ----------------
+async function loadGeo(key_){
+  const s = document.getElementById('blob_'+key_).textContent.trim();
+  const bin = atob(s), u = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u[i] = bin.charCodeAt(i);
+  const buf = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const m = GEO_META[key_];
+  const P_ = m.n_points, F_ = m.n_faces, NL_ = m.levels.length, idxT = m.idx32 ? Uint32Array : Uint16Array, idxB = m.idx32 ? 4 : 2;
+  let o = 0;
+  const take = (T, n, bytes) => { const a = new T(buf.slice(o, o + n*bytes)); o += n*bytes; return a; };
+  const D_ = {
+    pts: take(Float32Array, 3*P_, 4),
+    tri: take(idxT, 3*F_, idxB),
+    base: take(Float32Array, 3*F_, 4),
+    rel: take(Int16Array, (NL_-1)*3*F_, 2),
+    X: take(Float32Array, F_, 4),
+    sac: take(Uint8Array, F_, 1),
+  };
+  return {D: D_, P: P_, F: F_, NL: NL_, meta: m};
+}
+
+async function switchGeo(key_){
+  geoKey = key_;
+  const {D: D_, P: P_, F: F_, NL: NL_, meta} = await loadGeo(key_);
+  D = D_; P = P_; F = F_; NL = NL_; META = meta;
+  const xs = Float32Array.from(D.X).sort(); X99 = xs[Math.floor(0.99*F)];
+  XSAC = 0; for(let f=0; f<F; f++) if(D.sac[f]) XSAC = Math.max(XSAC, D.X[f]);
+  buildMeshFor(D, P, F);
+  updatePanel();
+  recolor();
+  drawLaw();
+}
+
+document.querySelectorAll('.maps button').forEach(b => b.addEventListener('click', () => {
+  map = b.dataset.map;
+  document.querySelectorAll('.maps button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  recolor();
+}));
+document.querySelectorAll('.geopick button').forEach(b => b.addEventListener('click', () => {
+  if(b.dataset.geo === geoKey) return;
+  document.querySelectorAll('.geopick button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  switchGeo(b.dataset.geo);
+}));
+$('rho').addEventListener('input', e => { level = +e.target.value; updatePanel(); recolor(); });
+$('xf').addEventListener('input', updateCalc);
+window.addEventListener('resize', () => { drawLaw(); drawAI(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { drawLaw(); drawAI(); recolor(); });
+new MutationObserver(() => { drawLaw(); drawAI(); recolor(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+document.querySelectorAll('.views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+buildAI(); buildBands(); buildFP(); buildLawType(); buildQuotes();
+initGLOnce();
+switchGeo('cerebral').then(() => { $('loading').remove(); })
+  .catch(err => { $('loading').innerHTML = `<span class="err">The wall mesh could not be unpacked (${err.message}). Open this page in a current Chrome, Firefox or Safari.</span>`; });
+})();
+</script>
+</body>
+</html>
