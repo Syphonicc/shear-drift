@@ -9,20 +9,22 @@ Deep-learning surrogates for pulsatile wall shear stress (WSS) are scored by a f
 RRT divides by the *net* shear, so wherever forward and backward shear cancel it is ill-conditioned. This repository works out what that means for surrogate validation and packages it as an interactive check.
 
 **Explorer:** https://syphonicc.github.io/shear-drift/
-**Technical note:** [`paper/shear_drift_note.tex`](paper/shear_drift_note.tex) (arXiv ID to follow)
+**Technical note:** [`paper/shear_drift_note_v2.tex`](paper/shear_drift_note_v2.tex) (arXiv ID to follow)
 
 ## Results in one table
 
 | claim | evidence | where |
 |---|---|---|
-| Excess RRT error over TAWSS scales as c·ε·(1/R − 1)^p with c = 0.194, p = 0.64 (R² = 0.956) | 279 exact Womersley cases, α 2–16, clock error 1–5 % | `analysis/womersley_sweep.py` |
-| RRT is exactly invariant to temporal smoothing (∫τ dt preserved); ε must be the offset-removed field error | same sweep; RRT error under a box filter 7e-16 | same |
-| A POD+LSTM rollout at an unseen heart rate has one-step RMSE 0.073 but a clock 1.4 % fast; the clock error is recoverable from the rollout alone; re-timing repairs only ~1/5 of the RRT error | 6- and 40-beat rollouts on a patient MCA aneurysm CFD | `analysis/pod_lstm_hr_v2.py`, `analysis/phase_correct_v2.py`, `runs/long40/` |
-| The (TAWSS, OSI, RRT) error triple fingerprints the error type: drift → OSI/TAWSS ≈ 1.2, frame noise ≈ 30, frozen spatial bias 5–6; RRT/TAWSS ≈ 1.3 for all | cerebral wall perturbed three ways, scored with RHSIA's rL2 | `analysis/rhsia_check.py`, `_v2`, `_v3` |
-| An independent published model (RHSIA, arXiv 2601.19876, Table V: 13.5 / 68.4 / 17.3 %) sits in the spatial-bias band with RRT/TAWSS = 1.28 | their numbers, our perturbations | same |
-| On a reversing AAA (VMR AAA042, 17 cycles to periodicity) RRT amplification vs OSI has log-log slope +0.49; sac OSI peaks at 0.209 vs 0.085 for the cerebral control | injected clock drift on the converged cycle | `geometry/aaa100/mechanism_test_aaa042_v2.py` |
+| **First-order sensitivity of the cancellation ratio to any perturbation:** δR/R = ŝ·⟨d⟩/(R·M) − ⟨τ̂·d⟩/M, from which δRRT/RRT = δTAWSS/TAWSS + δR/R | derivation | `paper/shear_drift_note_v2.tex` §2 |
+| **Window mismatch** (rollout with an unknown period, integrated over the patient's cycle): closed form in the first two moments of τ⁺ and τ⁻. Exponent in X = 1/R − 1 is **5/6 at the onset of reversal** (derived from the parabolic reversed lobe, confirmed numerically: F/X^(5/6) → 1.504 as X → 6e-7 while F/X diverges), 1 for broad reversal | 294 reversing Womersley cases, α 2–16 | `analysis/womersley_sweep.py`, `analysis/law_theory.py` |
+| **Persistent spatial bias:** exponent 1 with a larger prefactor, (δR/R)/ε = X + 2f₋ in 1D. Predicts the measured per-face response to within 16% in every reversing bin, for field errors 2–20% | cerebral wall, four amplitudes × four seeds | `analysis/law_theory_bias.py`, `analysis/referee_checks.py` |
+| **White noise** is suppressed as N^(−1/2); **RRT is exactly invariant to temporal smoothing** (any perturbation with zero time-mean leaves the net shear untouched) | box filter: RRT error 7e-16; N = 40/80/160 sweep | `analysis/womersley_sweep.py`, `analysis/referee_checks.py` |
+| At matched field error, cancellation punishes **bias ≈ 5× harder than a window mismatch**; a period change integrated over the surrogate's *own* period costs exactly nothing | cerebral wall, ε = 10.8% | `analysis/law_vs_errortype.py` |
+| A POD+LSTM rollout at an unseen heart rate has one-step RMSE 0.073 but a limit cycle 1.4% fast. The clock error is recoverable from the rollout alone, with no ground truth — but **re-timing removes under 10%** of the RRT error (wall 4.95% → 4.54%); even a perfect clock fix could only have removed ~a fifth, the rest being beat shape | 6- and 40-beat rollouts on a patient MCA aneurysm CFD | `analysis/pod_lstm_hr_v2.py`, `analysis/phase_correct_v2.py`, `runs/long40/` |
+| The (TAWSS, OSI, RRT) error triple fingerprints the *kind* of error. An independent published model (RHSIA, arXiv 2601.19876, Table V: 13.5 / 68.4 / 17.3%) lands in the spatial-bias band — a reading its corresponding author confirmed | their numbers, our perturbations | `analysis/rhsia_check.py`, `_v2`, `_v3` |
+| **The bands are not universal.** As a wall's median OSI rises 0.0007 → 0.05 the noise band falls 27 → 5 and the bias band 4.8 → 2.3, while window mismatch stays 1.1–1.3. The explorer recalibrates and refuses to diagnose when they overlap | nested subsets of the cerebral wall | `analysis/referee_checks.py` |
 
-What is **not** claimed: p = 0.64 is empirical (first order gives 1) and the Womersley constant under-predicts the LSTM's excess RRT error in the strongest-cancellation bin by up to 8×; the ordering across bins is right, the constant is not universal.
+What is **not** claimed. The closed form for a window mismatch is one-dimensional: applied per face in 3D it is a lower bound, and returns zero where cancellation is transverse rather than antiparallel. Both patient geometries are weakly reversing — the cerebral wall contributes 9 faces above X = 1 and AAA042 none — so the strong-cancellation regime rests on the analysis and the Womersley sweep, not on patient data. AAA042 reaches only a 2.66% cycle-to-cycle floor and its numbers are trends only. No clinical misclassification rate is established.
 
 ## Reproduce
 
@@ -31,8 +33,10 @@ conda activate drift          # py3.11, torch (CPU), sklearn, numpy
 python analysis/womersley_sweep.py
 python analysis/pod_lstm_hr_v2.py --mode heartrate
 python analysis/phase_correct_v2.py
+python analysis/law_theory.py && python analysis/law_theory_bias.py && python analysis/law_vs_errortype.py
 python analysis/rhsia_check.py && python analysis/rhsia_check_v2.py && python analysis/rhsia_check_v3.py
-python analysis/build_web_v3.py   # -> web/shear_drift_explorer_v3.html (copy to docs/index.html to publish)
+python analysis/referee_checks.py && python analysis/referee_checks_v2.py && python analysis/referee_checks_r2.py
+python analysis/build_web_v5.py   # -> web/shear_drift_explorer_v5.html (copy to docs/index.html to publish)
 ```
 
 The scripts expect the cerebral CFD WSS array at `../results_v2/wss_data.npz` (120 × 33406 × 3, kinematic WSS, cycle 3 = indices 80:120) and the packed wall data in `data/` and `data/aaa042/` (`*.bin`, regenerated by `analysis/export_demo.py` and `geometry/aaa100/export_demo_aaa042_v1.py`). The raw OpenFOAM cases and AAA042 meshes are not in the repo (6 GB); the AAA042 surface is from the Vascular Model Repository.
@@ -40,13 +44,14 @@ The scripts expect the cerebral CFD WSS array at `../results_v2/wss_data.npz` (1
 ## Layout
 
 ```
-analysis/      Womersley sweep, POD+LSTM, phase correction, RHSIA fingerprint, explorer build
+analysis/      Womersley sweep, first-order theory + checks, POD+LSTM, phase correction,
+               RHSIA fingerprint, explorer build
 data/          packed wall data for the explorer (cerebral, aaa042) + rollout results
 geometry/      AAA042 pipeline: inflow waveform, wall/patch extraction, biomarkers, mechanism test
 runs/long40/   40-beat rollout
-web/           explorer template (v3) + vendored three.js
+web/           explorer template (v5) + vendored three.js
 docs/          built explorer served by GitHub Pages
-paper/         technical note (.tex, figures)
+paper/         technical note (_v2.tex is current), figures, pitch script
 prior_work/    earlier CFD and analysis this builds on
 ```
 
