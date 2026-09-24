@@ -9,7 +9,7 @@ version: 0.1.0
 date-released: 2026-09-20
 repository-code: "https://github.com/Syphonicc/shear-drift"
 url: "https://syphonicc.github.io/shear-drift/"
-license: MIT  # code; derived data and figures are CC-BY-4.0 (see LICENSE)
+license: MIT  # code; derived data and figures are CC-BY-4.0 (see NOTICE.md)
 keywords:
   - hemodynamics
   - wall shear stress

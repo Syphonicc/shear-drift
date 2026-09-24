@@ -52,4 +52,4 @@ prior_work/    earlier CFD and analysis this builds on
 
 ## Cite
 
-See [`CITATION.cff`](CITATION.cff). Code is MIT; derived data and figures are CC BY 4.0; third-party inputs keep their own terms — see [`LICENSE`](LICENSE). Built for the UnivaXBio hackathon (Devpost, October 2026). Cerebral CFD and AAA042 runs on OpenFOAM v2512; AAA042 geometry from the Vascular Model Repository.
+See [`CITATION.cff`](CITATION.cff). Code is MIT ([`LICENSE`](LICENSE)); derived data and figures are CC BY 4.0; third-party inputs keep their own terms — see [`NOTICE.md`](NOTICE.md). Built for the UnivaXBio hackathon (Devpost, October 2026). Cerebral CFD and AAA042 runs on OpenFOAM v2512; AAA042 geometry from the Vascular Model Repository.

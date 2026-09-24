@@ -1,41 +1,21 @@
+MIT License
+
 Copyright (c) 2026 Suvam Samanta
 
-This repository contains three kinds of material, under different terms.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. SOURCE CODE (everything under analysis/, web/, geometry/aaa100/*.py, and
-   the build scripts) — MIT License:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
-
-2. DERIVED DATA AND FIGURES produced by this work (the reduced arrays under
-   data/ and runs/, the sweep CSV, the PNG figures, and the built page in
-   docs/) — Creative Commons Attribution 4.0 International (CC BY 4.0),
-   https://creativecommons.org/licenses/by/4.0/
-   Please cite as given in CITATION.cff.
-
-3. THIRD-PARTY INPUTS are not covered by either licence above and remain
-   subject to the terms of their original providers:
-   - The cerebral aneurysm geometry derives from anonymised images distributed
-     for the 2015 International Aneurysm CFD Challenge (Valen-Sendstad et al.,
-     Cardiovasc. Eng. Technol. 9 (2018) 544-564; data
-     doi:10.6084/m9.figshare.6383516). IRB approval for sharing those
-     anonymised images was obtained by the challenge organisers from Wakayama
-     Rosai Hospital. No raw images are redistributed here.
-   - The AAA042 surface is from the Vascular Model Repository and is not
-     redistributed here.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
